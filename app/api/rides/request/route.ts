@@ -5,32 +5,35 @@ const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {
-    // Get the data from the request body
-    const { userId, pickup, destination, fare } = await req.json();
+    const { userId, pickup, destination, fare, driverId } = await req.json();
 
-    // Validate the input fields
-    if (!userId || !pickup || !destination || !fare) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+    // Convert fare to a number if it's a string
+    const parsedFare = typeof fare === 'number' ? fare : Number(fare);
+
+    // Validate inputs
+    if (!userId || !pickup || !destination || !driverId || isNaN(parsedFare) || parsedFare < 0) {
+      return NextResponse.json({ error: "Invalid input fields" }, { status: 400 });
     }
 
-    // Find the user to make sure the user exists
+    // Ensure user and driver exist
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const driver = await prisma.user.findUnique({ where: { id: driverId } });
 
-    // Create the ride request
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!driver) return NextResponse.json({ error: "Driver not found" }, { status: 404 });
+
+    // Create the ride
     const ride = await prisma.ride.create({
       data: {
         userId,
+        driverId,
         pickup,
         destination,
-        fare,
-        status: "pending",  // Ride status initially is "pending"
+        fare: parsedFare,  // Ensure fare is a valid number
+        status: "pending",
       },
     });
 
-    // Return the ride information with a success status
     return NextResponse.json(ride, { status: 201 });
   } catch (error) {
     console.error("❌ Error requesting ride:", error);

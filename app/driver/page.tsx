@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 // Define the Ride type
 type Ride = {
@@ -15,6 +17,7 @@ export default function DriverDashboard() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(false);
   const [driverId, setDriverId] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchRides();
@@ -29,51 +32,55 @@ export default function DriverDashboard() {
       console.error("Error fetching rides:", error);
     }
   };
-const fetchDriverId = async () => {
-  try {
-    const res = await axios.get("/api/auth/session"); // Ensure correct auth endpoint
-    console.log("🔍 Session Response:", res.data); // Debugging log
 
-    if (res.data?.user?.id) {
-      console.log("✅ Driver ID Retrieved:", res.data.user.id);
-      setDriverId(res.data.user.id);
-    } else {
-      console.warn("⚠️ Driver ID not found in session");
+  const fetchDriverId = async () => {
+    try {
+      const res = await axios.get("/api/auth/session"); // Ensure correct auth endpoint
+      console.log("🔍 Session Response:", res.data); // Debugging log
+
+      if (res.data?.user?.id) {
+        console.log("✅ Driver ID Retrieved:", res.data.user.id);
+        setDriverId(res.data.user.id);
+      } else {
+        console.warn("⚠️ Driver ID not found in session");
+      }
+    } catch (error) {
+      console.error("❌ Error fetching driver ID:", error);
     }
-  } catch (error) {
-    console.error("❌ Error fetching driver ID:", error);
-  }
-};
+  };
 
-  
-const acceptRide = async (rideId: string) => {
-  if (!driverId) {
-    console.warn("⚠️ Driver ID missing, fetching again...");
-    await fetchDriverId(); // Ensure driverId is retrieved before proceeding
-  }
+  const acceptRide = async (rideId: string) => {
+    if (!driverId) {
+      console.warn("⚠️ Driver ID missing, fetching again...");
+      await fetchDriverId(); // Ensure driverId is retrieved before proceeding
+    }
 
-  if (!driverId) { // Double check after fetching
-    alert("Error: Driver not logged in!");
-    return;
-  }
+    if (!driverId) {
+      // Double check after fetching
+      alert("Error: Driver not logged in!");
+      return;
+    }
 
-  console.log("🚕 Sending Accept Ride Request:", { rideId, driverId });
+    console.log("🚕 Sending Accept Ride Request:", { rideId, driverId });
 
-  setLoading(true);
-  try {
-    const res = await axios.post("/api/rides/accept", { rideId, driverId });
+    setLoading(true);
+    try {
+      const res = await axios.post("/api/rides/accept", { rideId, driverId });
 
-    console.log("✅ Ride Accepted:", res.data);
+      console.log("✅ Ride Accepted:", res.data);
 
-    alert("Ride Accepted!");
-    fetchRides(); // Refresh ride list
-  } catch (error) {
-    console.error("❌ Error accepting ride:", error);
-    alert("Failed to accept ride.");
-  }
-  setLoading(false);
-};
+      alert("Ride Accepted!");
+      fetchRides(); // Refresh ride list
+    } catch (error) {
+      console.error("❌ Error accepting ride:", error);
+      alert("Failed to accept ride.");
+    }
+    setLoading(false);
+  };
 
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login" }); // Redirects to the login page on the same host
+  };
   
   return (
     <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow-lg">
@@ -96,6 +103,14 @@ const acceptRide = async (rideId: string) => {
           </div>
         ))
       )}
+
+      {/* Logout Button */}
+      <button
+        className="bg-red-500 text-white p-2 w-full mt-4 rounded font-bold hover:bg-red-600 transition"
+        onClick={handleLogout}
+      >
+        Logout
+      </button>
     </div>
   );
 }
