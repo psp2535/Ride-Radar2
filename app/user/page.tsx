@@ -183,9 +183,11 @@ export default function UserDashboard() {
 };
 
 
-  const logout = () => {
-    signOut();
-  };
+
+const logout = async () => {
+  await signOut({ redirect: false });
+  window.location.href = "/login"; // Ensure it redirects to the login page
+};
 
   return (
     <div className="p-6 max-w-lg mx-auto bg-white rounded-lg shadow-lg">
